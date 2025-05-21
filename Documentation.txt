@@ -1,0 +1,55 @@
+1. Helm Chart Creation (metrics-app)
+metrics-app/
+├── Chart.yaml
+├── values.yaml
+├── templates/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── secret.yaml
+│   ├── ingress.yaml
+
+
+2. Set Up KIND + ArgoCD
+2.1 KIND Cluster
+kind create cluster --name metrics-cluster
+2.2 Install ArgoCD
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+2.3 Access ArgoCD
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+2.4: Login with:
+argocd login localhost:8080
+argocd account update-password
+
+3. GitOps with ArgoCD
+Push your Helm chart to a Git repo, then create an ArgoCD App:
+argocd app create metrics-app \
+  --repo https://github.com/your-user/your-repo \
+  --path metrics-app \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace default \
+  --sync-policy automated
+
+4. Ingress Setup:
+4.1 Install NGINX Ingress:
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/kind/deploy.yaml
+
+
+5: Add to /etc/hosts:
+127.0.0.1   metrics.local
+
+
+6. Behavior Validation
+for i in $(seq 1 20); do
+  echo -n "Request $i: "
+  curl -s http://metrics.local/counter
+done
+
+
+Expected Output:
+Counter value: 1
+Counter value: 2
+...
+
+
+
